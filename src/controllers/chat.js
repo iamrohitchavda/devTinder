@@ -1,4 +1,6 @@
 import Chat from "../models/chat.js";
+import User from "../models/user.js";
+import { PUBLIC_USER_FIELDS } from "../constants/user.js";
 import { success } from "../utils/appError.js";
 
 export const getChats = async (req, res) => {
@@ -26,8 +28,10 @@ export const getChats = async (req, res) => {
     (first, second) => first.createdAt - second.createdAt,
   );
   const messages = orderedMessages.slice(skip, skip + limit);
+  const partner = await User.findById(receiverId).select(PUBLIC_USER_FIELDS);
 
   return success(res, 200, "Chat fetched successfully", {
+    partner,
     messages,
     pagination: {
       page,
