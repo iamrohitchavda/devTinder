@@ -1,6 +1,7 @@
 import ConnectionRequest from "../models/connectionRequest.js";
 import User from "../models/user.js";
 import { success } from "../utils/appError.js";
+import { PUBLIC_USER_FIELDS } from "../constants/user.js";
 
 export const userRequestReceived = async (req, res) => {
     const loggedInUser = req.user;
@@ -8,16 +9,7 @@ export const userRequestReceived = async (req, res) => {
     const connectionRequests = await ConnectionRequest.find({
       toUserId: loggedInUser._id,
       status: "interested"
-    }).populate("fromUserId", [
-      "firstName",
-      " lastName",
-      "bio",
-      "age",
-      "gender",
-      "photoUrl",
-      "skills"
-    ]); // more ways to write
-    // }).populate("fromUserId", "firstName lastName");
+    }).populate("fromUserId", PUBLIC_USER_FIELDS);
 
     return success(res, 200, "Requests fetched successfully", connectionRequests);
 };
@@ -31,24 +23,7 @@ export const userConnections = async (req, res) => {
         { toUserId: loggedInUser._id, status: "accepted" }
       ]
     })
-      .populate("fromUserId toUserId", [
-        "firstName",
-        "lastName",
-        "bio",
-        "age",
-        "gender",
-        "photoUrl",
-        "skills"
-      ])
-      .populate("toUserId", [
-        "firstName",
-        "lastName",
-        "bio",
-        "age",
-        "gender",
-        "photoUrl",
-        "skills"
-      ]);
+      .populate("fromUserId toUserId", PUBLIC_USER_FIELDS);
 
     const data = connections.map((row) => {
       if (row.fromUserId._id.equals(loggedInUser._id)) {
@@ -84,7 +59,7 @@ export const feed = async (req, res) => {
         { _id: { $nin: Array.from(hideUserFromFeed) } }
       ]
     })
-      .select("firstName lastName skills photoUrl bio age gender")
+      .select(PUBLIC_USER_FIELDS)
       .skip(skip)
       .limit(limit);
 

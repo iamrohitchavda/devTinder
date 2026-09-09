@@ -1,4 +1,5 @@
 import validator from "validator";
+import { PASSWORD_MESSAGE, PASSWORD_OPTIONS } from "../constants/auth.js";
 export const signUpValidator = (data = {}) => {
   const { email, firstName, lastName, password, age } = data;
 
@@ -18,8 +19,8 @@ export const signUpValidator = (data = {}) => {
     throw new Error("Invalid email address");
   }
 
-  if (!validator.isStrongPassword(password)) {
-    throw new Error("Password is not strong enough");
+  if (!validator.isStrongPassword(password, PASSWORD_OPTIONS)) {
+    throw new Error(PASSWORD_MESSAGE);
   }
 };
 export const loginValidator = (data) => {

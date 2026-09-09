@@ -93,7 +93,7 @@ export const initalizeSocket = (server) => {
     });
     socket.on(
       "sendMessage",
-      async ({ text, time, receiverId }) => {
+      async ({ text, receiverId }) => {
         try {
           if (
             !mongoose.isValidObjectId(receiverId) ||
@@ -124,17 +124,18 @@ export const initalizeSocket = (server) => {
           chat.messages.push({
             text: text.trim(),
             senderId,
-            time,
             receiverId,
           });
 
           await chat.save();
+          const message = chat.messages.at(-1);
 
           const roomId = getHashedRoomId(senderId, receiverId);
           io.to(roomId).emit("messageReceived", {
-            text: text.trim(),
+            _id: message._id,
+            text: message.text,
             senderId,
-            time,
+            createdAt: message.createdAt,
             receiverId,
             senderName: socket.data.user.name,
           });

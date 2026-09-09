@@ -1,5 +1,6 @@
 import User from "../models/user.js";
 import validator from "validator";
+import { PASSWORD_MESSAGE, PASSWORD_OPTIONS } from "../constants/auth.js";
 export const validateEditProfile = (data = {}) => {
   const allowedFields = [
     "firstName",
@@ -55,8 +56,8 @@ export const validatePasswordUpdate = async (
     throw new Error("Existing password is incorrect");
   }
 
-  if (!validator.isStrongPassword(newPassword)) {
-    throw new Error("New password is not strong enough");
+  if (!validator.isStrongPassword(newPassword, PASSWORD_OPTIONS)) {
+    throw new Error(PASSWORD_MESSAGE);
   }
 
   return true;

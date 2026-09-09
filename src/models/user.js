@@ -2,6 +2,7 @@ import mongoose from "mongoose";
 import validator from "validator";
 import bcrypt from "bcrypt";
 import JWT from "jsonwebtoken";
+import { PASSWORD_MESSAGE, PASSWORD_OPTIONS } from "../constants/auth.js";
 
 const userSchema = new mongoose.Schema(
   {
@@ -29,10 +30,8 @@ const userSchema = new mongoose.Schema(
       required: true,
       select: false,
       validate(value) {
-        if (!validator.isStrongPassword(value, { minLength: 6 })) {
-          throw new Error(
-            "Password is not strong enough and should be at least 6 characters long"
-          );
+        if (!validator.isStrongPassword(value, PASSWORD_OPTIONS)) {
+          throw new Error(PASSWORD_MESSAGE);
         }
       }
     },

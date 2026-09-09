@@ -5,6 +5,8 @@ const messageSchema = new mongoose.Schema(
     text: {
       type: String,
       required: true,
+      trim: true,
+      maxlength: 2000,
     },
     senderId: {
       type: mongoose.Schema.Types.ObjectId,
@@ -14,10 +16,6 @@ const messageSchema = new mongoose.Schema(
     receiverId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
-      required: true,
-    },
-    time: {
-      type: String,
       required: true,
     },
   },
