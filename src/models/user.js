@@ -27,6 +27,7 @@ const userSchema = new mongoose.Schema(
     password: {
       type: String,
       required: true,
+      select: false,
       validate(value) {
         if (!validator.isStrongPassword(value, { minLength: 6 })) {
           throw new Error(
@@ -84,6 +85,14 @@ const userSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+// Password hashes must never be serialized into API responses.
+userSchema.set("toJSON", {
+  transform: (_document, returnedObject) => {
+    delete returnedObject.password;
+    return returnedObject;
+  },
+});
 
 userSchema.methods.getJWT = async function () {
   const user = this;

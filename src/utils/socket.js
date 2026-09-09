@@ -1,6 +1,10 @@
 import { Server } from "socket.io";
 import crypto from "crypto";
 import Chat from "../models/chat.js";
+import JWT from "jsonwebtoken";
+import mongoose from "mongoose";
+import User from "../models/user.js";
+import ConnectionRequest from "../models/connectionRequest.js";
 
 const getHashedRoomId = (sender, receiver) => {
   return crypto
@@ -8,6 +12,21 @@ const getHashedRoomId = (sender, receiver) => {
     .update([sender, receiver].sort().join("&"))
     .digest("hex");
 };
+
+const getTokenFromCookies = (cookieHeader = "") =>
+  cookieHeader
+    .split(";")
+    .map((cookie) => cookie.trim())
+    .find((cookie) => cookie.startsWith("token="))
+    ?.slice("token=".length);
+
+const areAcceptedConnections = async (userId, receiverId) =>
+  ConnectionRequest.exists({
+    $or: [
+      { fromUserId: userId, toUserId: receiverId, status: "accepted" },
+      { fromUserId: receiverId, toUserId: userId, status: "accepted" },
+    ],
+  });
 
 export const initalizeSocket = (server) => {
   const io = new Server(server, {
@@ -19,16 +38,51 @@ export const initalizeSocket = (server) => {
 
   const userOnlineList = new Map();
 
+  io.use(async (socket, next) => {
+    try {
+      const token = getTokenFromCookies(socket.handshake.headers.cookie);
+      if (!token) {
+        return next(new Error("Authentication required"));
+      }
+
+      const { _id } = JWT.verify(token, process.env.JWT_SECRET);
+      const user = await User.findById(_id).select("firstName lastName");
+      if (!user) {
+        return next(new Error("User not found"));
+      }
+
+      socket.data.user = {
+        id: user._id.toString(),
+        name: `${user.firstName} ${user.lastName || ""}`.trim(),
+      };
+      next();
+    } catch {
+      next(new Error("Authentication failed"));
+    }
+  });
+
   io.on("connection", (socket) => {
-    socket.on("goOnline", ({ userId }) => {
-      userOnlineList.set(userId, socket.id);
+    const senderId = socket.data.user.id;
+
+    socket.on("goOnline", () => {
+      userOnlineList.set(senderId, socket.id);
       // Immediately broadcast to ALL clients that this user has come online!
       io.emit("status-changed", {
         userOnlineList: Object.fromEntries(userOnlineList),
       });
     });
 
-    socket.on("joinChat", ({ senderId, receiverId }) => {
+    socket.on("joinChat", async ({ receiverId }) => {
+      if (!mongoose.isValidObjectId(receiverId)) {
+        return socket.emit("chat-error", { message: "Invalid receiver ID" });
+      }
+
+      if (!(await areAcceptedConnections(senderId, receiverId))) {
+        return socket.emit("chat-error", {
+          message: "You can only chat with accepted connections.",
+        });
+      }
+
       const roomId = getHashedRoomId(senderId, receiverId);
       socket.join(roomId);
       userOnlineList.set(senderId, socket.id);
@@ -39,8 +93,23 @@ export const initalizeSocket = (server) => {
     });
     socket.on(
       "sendMessage",
-      async ({ text, senderId, time, receiverId, senderName }) => {
+      async ({ text, time, receiverId }) => {
         try {
+          if (
+            !mongoose.isValidObjectId(receiverId) ||
+            typeof text !== "string" ||
+            !text.trim() ||
+            text.length > 2000
+          ) {
+            return socket.emit("chat-error", { message: "Invalid message" });
+          }
+
+          if (!(await areAcceptedConnections(senderId, receiverId))) {
+            return socket.emit("chat-error", {
+              message: "You can only chat with accepted connections.",
+            });
+          }
+
           let chat = await Chat.findOne({
             participants: { $all: [senderId, receiverId] },
           });
@@ -53,7 +122,7 @@ export const initalizeSocket = (server) => {
           }
 
           chat.messages.push({
-            text,
+            text: text.trim(),
             senderId,
             time,
             receiverId,
@@ -63,11 +132,11 @@ export const initalizeSocket = (server) => {
 
           const roomId = getHashedRoomId(senderId, receiverId);
           io.to(roomId).emit("messageReceived", {
-            text,
+            text: text.trim(),
             senderId,
             time,
             receiverId,
-            senderName,
+            senderName: socket.data.user.name,
           });
         } catch (error) {
           console.log("error while sending message", error.message);

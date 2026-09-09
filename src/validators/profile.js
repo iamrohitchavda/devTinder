@@ -43,9 +43,11 @@ export const validatePasswordUpdate = async (
     );
   }
 
-  const loggedInUser = await User.find({ email: user.email });
+  const loggedInUser = await User.findOne({ email: user.email }).select(
+    "+password",
+  );
 
-  const isExisistingPasswordValid = await loggedInUser[0].comparePassword(
+  const isExisistingPasswordValid = await loggedInUser.comparePassword(
     existingPassword
   );
 

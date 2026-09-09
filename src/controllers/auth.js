@@ -2,6 +2,19 @@ import bcrypt from "bcrypt";
 import User from "../models/user.js";
 import { signUpValidator, loginValidator } from "../validators/auth.js";
 
+const tokenCookieOptions = {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === "production",
+  sameSite: "lax",
+  maxAge: 24 * 60 * 60 * 1000,
+};
+
+const tokenClearCookieOptions = {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === "production",
+  sameSite: "lax",
+};
+
 export const signUp = async (req, res) => {
   try {
     signUpValidator(req.body);
@@ -37,7 +50,7 @@ export const signUp = async (req, res) => {
     const saveUser = await userObject.save();
 
     const token = await saveUser.getJWT();
-    res.cookie("token", token);
+    res.cookie("token", token, tokenCookieOptions);
 
     res.json({ message: "User signed up successfully", user: saveUser });
   } catch (err) {
@@ -51,7 +64,7 @@ export const login = async (req, res) => {
   try {
     loginValidator(req.body);
 
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ email }).select("+password");
     if (!user) {
       return res.status(401).send("Invalid username or password");
     }
@@ -60,7 +73,7 @@ export const login = async (req, res) => {
 
     if (isPasswordValid) {
       const token = await user.getJWT();
-      res.cookie("token", token);
+      res.cookie("token", token, tokenCookieOptions);
       res.json({ message: "User logged in successfully", user });
     } else {
       return res.status(401).send("Invalid username or password");
@@ -71,6 +84,6 @@ export const login = async (req, res) => {
 };
 
 export const logout = (req, res) => {
-  res.clearCookie("token");
+  res.clearCookie("token", tokenClearCookieOptions);
   res.send("User logged out successfully");
 };
