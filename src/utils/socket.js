@@ -16,6 +16,14 @@ export const emitMatchCreated = (events) => {
   });
 };
 
+export const emitMessageUnsent = (senderId, receiverId, messageId) => {
+  if (!io) return;
+
+  io.to(getHashedRoomId(senderId, receiverId)).emit("messageUnsent", {
+    messageId,
+  });
+};
+
 const getHashedRoomId = (sender, receiver) => {
   return crypto
     .createHash("sha256")
@@ -40,6 +48,7 @@ const areAcceptedConnections = async (userId, receiverId) =>
 
 export const initalizeSocket = (server) => {
   io = new Server(server, {
+    maxHttpBufferSize: 2100000,
     cors: {
       origin: "http://localhost:5173",
       credentials: true,
@@ -104,15 +113,23 @@ export const initalizeSocket = (server) => {
     });
     socket.on(
       "sendMessage",
-      async ({ text, receiverId }) => {
+      async ({ text, imageData, receiverId }) => {
         try {
+          const hasText = typeof text === "string" && text.trim();
+          const isValidImage =
+            typeof imageData === "string" &&
+            /^data:image\/(jpeg|png|webp|gif);base64,/.test(imageData) &&
+            imageData.length <= 2100000;
+
           if (
             !mongoose.isValidObjectId(receiverId) ||
-            typeof text !== "string" ||
-            !text.trim() ||
-            text.length > 2000
+            (!hasText && !isValidImage) ||
+            (typeof text === "string" && text.length > 2000) ||
+            (imageData && !isValidImage)
           ) {
-            return socket.emit("chat-error", { message: "Invalid message" });
+            return socket.emit("chat-error", {
+              message: "Send text or an image up to 1.5 MB.",
+            });
           }
 
           if (!(await areAcceptedConnections(senderId, receiverId))) {
@@ -133,7 +150,8 @@ export const initalizeSocket = (server) => {
           }
 
           chat.messages.push({
-            text: text.trim(),
+            text: hasText ? text.trim() : "",
+            imageData: isValidImage ? imageData : null,
             senderId,
             receiverId,
           });
@@ -145,6 +163,7 @@ export const initalizeSocket = (server) => {
           io.to(roomId).emit("messageReceived", {
             _id: message._id,
             text: message.text,
+            imageData: message.imageData,
             senderId,
             createdAt: message.createdAt,
             receiverId,

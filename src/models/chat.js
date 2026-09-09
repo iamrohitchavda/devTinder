@@ -4,9 +4,14 @@ const messageSchema = new mongoose.Schema(
   {
     text: {
       type: String,
-      required: true,
+      default: "",
       trim: true,
       maxlength: 2000,
+    },
+    imageData: {
+      type: String,
+      default: null,
+      maxlength: 2100000,
     },
     senderId: {
       type: mongoose.Schema.Types.ObjectId,
@@ -31,6 +36,19 @@ const chatSchema = new mongoose.Schema({
     },
   ],
   messages: [messageSchema],
+  clearedAtBy: [
+    {
+      userId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+        required: true,
+      },
+      clearedAt: {
+        type: Date,
+        required: true,
+      },
+    },
+  ],
 });
 
 const Chat = new mongoose.model("Chat", chatSchema);
