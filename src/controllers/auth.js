@@ -1,6 +1,7 @@
 import bcrypt from "bcrypt";
 import User from "../models/user.js";
 import { signUpValidator, loginValidator } from "../validators/auth.js";
+import { failure, success } from "../utils/appError.js";
 
 const tokenCookieOptions = {
   httpOnly: true,
@@ -18,8 +19,8 @@ const tokenClearCookieOptions = {
 export const signUp = async (req, res) => {
   try {
     signUpValidator(req.body);
-  } catch (err) {
-    return res.status(400).send("Validation Error: " + err.message);
+  } catch (error) {
+    return failure(res, 400, error.message);
   }
   const {
     firstName,
@@ -44,18 +45,13 @@ export const signUp = async (req, res) => {
     skills,
     bio
   });
-  try {
-    const passwordHash = await bcrypt.hash(req.body.password, 10);
-    userObject.password = passwordHash;
-    const saveUser = await userObject.save();
+  const passwordHash = await bcrypt.hash(req.body.password, 10);
+  userObject.password = passwordHash;
+  const saveUser = await userObject.save();
 
-    const token = await saveUser.getJWT();
-    res.cookie("token", token, tokenCookieOptions);
-
-    res.json({ message: "User signed up successfully", user: saveUser });
-  } catch (err) {
-    return res.status(400).send("Error signing up user" + err.message);
-  }
+  const token = await saveUser.getJWT();
+  res.cookie("token", token, tokenCookieOptions);
+  return success(res, 201, "User signed up successfully", saveUser);
 };
 
 export const login = async (req, res) => {
@@ -63,27 +59,21 @@ export const login = async (req, res) => {
 
   try {
     loginValidator(req.body);
-
-    const user = await User.findOne({ email }).select("+password");
-    if (!user) {
-      return res.status(401).send("Invalid username or password");
-    }
-
-    const isPasswordValid = await user.comparePassword(password);
-
-    if (isPasswordValid) {
-      const token = await user.getJWT();
-      res.cookie("token", token, tokenCookieOptions);
-      res.json({ message: "User logged in successfully", user });
-    } else {
-      return res.status(401).send("Invalid username or password");
-    }
-  } catch (err) {
-    return res.status(500).send("Error logging in user:- " + err.message);
+  } catch (error) {
+    return failure(res, 400, error.message);
   }
+
+  const user = await User.findOne({ email }).select("+password");
+  if (!user || !(await user.comparePassword(password))) {
+    return failure(res, 401, "Invalid email or password");
+  }
+
+  const token = await user.getJWT();
+  res.cookie("token", token, tokenCookieOptions);
+  return success(res, 200, "User logged in successfully", user);
 };
 
 export const logout = (req, res) => {
   res.clearCookie("token", tokenClearCookieOptions);
-  res.send("User logged out successfully");
+  return success(res, 200, "User logged out successfully");
 };

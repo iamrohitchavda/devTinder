@@ -3,57 +3,31 @@ import {
   validateEditProfile,
   validatePasswordUpdate
 } from "../validators/profile.js";
+import { failure, success } from "../utils/appError.js";
 
-export const profileView = async (req, res) => {
-  try {
-    const user = req.user;
-    res.send(user);
-  } catch (err) {
-    return res.status(400).send("Error fetching profile:- " + err.message);
+export const profileView = (req, res) =>
+  success(res, 200, "Profile fetched successfully", req.user);
+
+export const profileEdit = async (req, res) => {
+  if (!validateEditProfile(req.body)) {
+    return failure(res, 400, "Invalid fields in profile update");
   }
-};
 
-export const profileEdit = (req, res) => {
-  try {
-    const isEditAllowed = validateEditProfile(req.body);
-    if (!isEditAllowed) {
-      return res.status(400).send("Invalid fields in profile update");
-    }
-
-    const loggedInUser = req.user;
-    Object.keys(req.body).forEach((key) => {
-      loggedInUser[key] = req.body[key];
-    });
-
-    loggedInUser
-      .save()
-      .then(() => res.send(loggedInUser))
-      .catch((err) =>
-        res.status(400).send("Error saving updated profile:- " + err.message)
-      );
-  } catch (err) {
-    return res.status(400).send("Error updating profile");
-  }
+  Object.assign(req.user, req.body);
+  const user = await req.user.save();
+  return success(res, 200, "Profile updated successfully", user);
 };
 
 export const passwordUpdate = async (req, res) => {
+  const { existingPassword, newPassword } = req.body || {};
+
   try {
-    const { existingPassword, newPassword } = req.body || {};
-
-    const user = req.user;
-
-    const isValidForUpdate = await validatePasswordUpdate(
-      existingPassword,
-      newPassword,
-      user
-    );
-
-    if (isValidForUpdate) {
-      user.password = await bcrypt.hash(newPassword, 10);
-      await user.save();
-      res.send("Password updated successfully");
-    }
-  } catch (err) {
-    return res.status(400).send("Error updating password: " + err.message);
+    await validatePasswordUpdate(existingPassword, newPassword, req.user);
+  } catch (error) {
+    return failure(res, 400, error.message);
   }
+
+  req.user.password = await bcrypt.hash(newPassword, 10);
+  await req.user.save();
+  return success(res, 200, "Password updated successfully");
 };

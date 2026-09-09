@@ -6,6 +6,7 @@ import setupAPI from "./routes/index.js";
 import cors from "cors";
 import http from "http";
 import { initalizeSocket } from "./utils/socket.js";
+import errorHandler from "./middlewares/errorHandler.js";
 
 import "./utils/cronJob.js";
 
@@ -24,13 +25,7 @@ app.use(cookieParser());
 
 setupAPI(app);
 
-// error handling middleware
-app.use((err, req, res, next) => {
-  if (err) {
-    console.error(err);
-    res.status(500).send("Something not working good there is some problem!");
-  }
-});
+app.use(errorHandler);
 
 // instead of express creates server and hide it , we manually create the server and attach the express app and socket both in it and listen to that together
 const server = http.createServer(app);

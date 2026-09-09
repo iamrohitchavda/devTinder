@@ -1,8 +1,8 @@
 import ConnectionRequest from "../models/connectionRequest.js";
 import User from "../models/user.js";
+import { success } from "../utils/appError.js";
 
 export const userRequestReceived = async (req, res) => {
-  try {
     const loggedInUser = req.user;
 
     const connectionRequests = await ConnectionRequest.find({
@@ -19,16 +19,10 @@ export const userRequestReceived = async (req, res) => {
     ]); // more ways to write
     // }).populate("fromUserId", "firstName lastName");
 
-    res
-      .status(200)
-      .json({ message: "Data fetched succesfully", data: connectionRequests });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+    return success(res, 200, "Requests fetched successfully", connectionRequests);
 };
 
 export const userConnections = async (req, res) => {
-  try {
     const loggedInUser = req.user;
 
     const connections = await ConnectionRequest.find({
@@ -64,14 +58,10 @@ export const userConnections = async (req, res) => {
       }
     });
 
-    res.status(200).json({ message: "Data fetched succesfully", data });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+    return success(res, 200, "Connections fetched successfully", data);
 };
 
 export const feed = async (req, res) => {
-  try {
     const loggedInUser = req.user;
     const page = parseInt(req.query.page) || 1;
     let limit = parseInt(req.query.limit) || 10;
@@ -88,7 +78,7 @@ export const feed = async (req, res) => {
       hideUserFromFeed.add(request.toUserId.toString());
     });
 
-    const user = await User.find({
+    const users = await User.find({
       $and: [
         { _id: { $ne: loggedInUser._id } },
         { _id: { $nin: Array.from(hideUserFromFeed) } }
@@ -98,8 +88,5 @@ export const feed = async (req, res) => {
       .skip(skip)
       .limit(limit);
 
-    res.status(200).json({ message: "Fetched Feed data", user });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+    return success(res, 200, "Feed fetched successfully", users);
 };

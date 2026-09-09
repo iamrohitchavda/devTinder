@@ -1,11 +1,12 @@
 import Chat from "../models/chat.js";
+import { success } from "../utils/appError.js";
+
 export const getChats = async (req, res) => {
   const { receiverId } = req.params;
 
   const senderId = req.user._id;
 
-  try {
-    let chat = await Chat.findOne({
+  let chat = await Chat.findOne({
       participants: { $all: [senderId, receiverId] },
     }).populate({
       path: "messages.senderId",
@@ -19,8 +20,5 @@ export const getChats = async (req, res) => {
       });
       await chat.save();
     }
-    return res.status(200).json({ chat });
-  } catch (error) {
-    throw new Error({ error: error.message });
-  }
+  return success(res, 200, "Chat fetched successfully", chat);
 };

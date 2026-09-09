@@ -1,21 +1,21 @@
 import ConnectionRequest from "../models/connectionRequest.js";
 import User from "../models/user.js";
 import { sendEmail } from "../utils/sendEmail.js";
+import { failure, success } from "../utils/appError.js";
 
 export const requestSend = async (req, res) => {
-  try {
     const fromUserId = req.user._id;
     const toUserId = req.params.toUserId;
     const status = req.params.status;
 
     const allowStatuses = ["interested", "ignored"];
     if (!allowStatuses.includes(status)) {
-      return res.status(400).json({ message: "Invalid status value" });
+      return failure(res, 400, "Invalid status value");
     }
 
     const toUser = await User.findById(toUserId);
     if (!toUser) {
-      return res.status(404).json({ message: "User not found" });
+      return failure(res, 404, "User not found");
     }
 
     const existingRequest = await ConnectionRequest.findOne({
@@ -26,9 +26,7 @@ export const requestSend = async (req, res) => {
     });
 
     if (existingRequest) {
-      return res
-        .status(400)
-        .json({ message: "Connection request already Exists!!" });
+      return failure(res, 409, "Connection request already exists");
     }
 
     const connectionRequest = new ConnectionRequest({
@@ -50,26 +48,23 @@ export const requestSend = async (req, res) => {
       console.log("Email Error: ", err.message);
     }
 
-    res.json({
-      message:
-        status === "interested"
-          ? req.user.firstName + " is " + status + " in " + toUser.firstName
-          : req.user.firstName + " " + status + " " + toUser.firstName,
+    return success(
+      res,
+      201,
+      status === "interested"
+        ? req.user.firstName + " is " + status + " in " + toUser.firstName
+        : req.user.firstName + " " + status + " " + toUser.firstName,
       data,
-    });
-  } catch (error) {
-    res.status(400).json({ "ERROR: ": error.message });
-  }
+    );
 };
 
 export const requestReview = async (req, res) => {
-  try {
     const loggedInUser = req.user;
     const { status, requestId } = req.params;
 
     const allowStatuses = ["accepted", "rejected"];
     if (!allowStatuses.includes(status)) {
-      return res.status(404).json({ message: "Status not allowed" });
+      return failure(res, 400, "Status not allowed");
     }
 
     const connectionRequest = await ConnectionRequest.findOne({
@@ -79,19 +74,15 @@ export const requestReview = async (req, res) => {
     });
 
     if (!connectionRequest) {
-      return res
-        .status(404)
-        .json({ message: "Connection request not found or already processed" });
+      return failure(res, 404, "Connection request not found or already processed");
     }
 
     connectionRequest.status = status;
     const updatedRequest = await connectionRequest.save();
-    res.status(200);
-    res.json({
-      message: `Connection request ${status} successfully`,
-      data: updatedRequest,
-    });
-  } catch (error) {
-    res.status(500).json({ "ERROR: ": error.message });
-  }
+    return success(
+      res,
+      200,
+      `Connection request ${status} successfully`,
+      updatedRequest,
+    );
 };
