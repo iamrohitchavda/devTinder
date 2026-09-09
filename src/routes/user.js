@@ -3,13 +3,10 @@ import auth from "../middlewares/auth.js";
 
 import {
   feed,
-  userRequestReceived,
   userConnections
 } from "../controllers/user.js";
 
 const router = express.Router();
-
-router.get("/user/requests/received", auth, userRequestReceived);
 
 router.get("/user/connections", auth, userConnections);
 

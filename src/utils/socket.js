@@ -6,6 +6,16 @@ import mongoose from "mongoose";
 import User from "../models/user.js";
 import ConnectionRequest from "../models/connectionRequest.js";
 
+let io;
+
+export const emitMatchCreated = (events) => {
+  if (!io) return;
+
+  events.forEach(({ userId, data }) => {
+    io.to(`user:${userId}`).emit("match-created", data);
+  });
+};
+
 const getHashedRoomId = (sender, receiver) => {
   return crypto
     .createHash("sha256")
@@ -29,7 +39,7 @@ const areAcceptedConnections = async (userId, receiverId) =>
   });
 
 export const initalizeSocket = (server) => {
-  const io = new Server(server, {
+  io = new Server(server, {
     cors: {
       origin: "http://localhost:5173",
       credentials: true,
@@ -63,6 +73,7 @@ export const initalizeSocket = (server) => {
 
   io.on("connection", (socket) => {
     const senderId = socket.data.user.id;
+    socket.join(`user:${senderId}`);
 
     socket.on("goOnline", () => {
       userOnlineList.set(senderId, socket.id);

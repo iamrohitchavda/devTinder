@@ -1,13 +1,13 @@
 import authRouter from "./auth.js";
 import profileRouter from "./profile.js";
-import requestRouter from "./request.js";
+import swipeRouter from "./swipe.js";
 import userRouter from "./user.js";
 import chatRouter from "./chat.js";
 
 const routers = [
   authRouter,
   profileRouter,
-  requestRouter,
+  swipeRouter,
   userRouter,
   chatRouter,
 ];

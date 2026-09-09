@@ -3,17 +3,6 @@ import User from "../models/user.js";
 import { success } from "../utils/appError.js";
 import { PUBLIC_USER_FIELDS } from "../constants/user.js";
 
-export const userRequestReceived = async (req, res) => {
-    const loggedInUser = req.user;
-
-    const connectionRequests = await ConnectionRequest.find({
-      toUserId: loggedInUser._id,
-      status: "interested"
-    }).populate("fromUserId", PUBLIC_USER_FIELDS);
-
-    return success(res, 200, "Requests fetched successfully", connectionRequests);
-};
-
 export const userConnections = async (req, res) => {
     const loggedInUser = req.user;
 
@@ -44,7 +33,13 @@ export const feed = async (req, res) => {
     const skip = (page - 1) * limit;
 
     const connectionRequestsSent = await ConnectionRequest.find({
-      $or: [{ fromUserId: loggedInUser._id }, { toUserId: loggedInUser._id }]
+      $or: [
+        { fromUserId: loggedInUser._id },
+        {
+          toUserId: loggedInUser._id,
+          status: { $in: ["accepted", "ignored", "rejected"] },
+        },
+      ],
     });
 
     const hideUserFromFeed = new Set();
