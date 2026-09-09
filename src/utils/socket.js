@@ -113,19 +113,24 @@ export const initalizeSocket = (server) => {
     });
     socket.on(
       "sendMessage",
-      async ({ text, imageData, receiverId }) => {
+      async ({ text, imageData, mediaUrl, receiverId }) => {
         try {
           const hasText = typeof text === "string" && text.trim();
           const isValidImage =
             typeof imageData === "string" &&
             /^data:image\/(jpeg|png|webp|gif);base64,/.test(imageData) &&
             imageData.length <= 2100000;
+          const isValidMediaUrl =
+            typeof mediaUrl === "string" &&
+            /^https?:\/\/[^\s]+$/i.test(mediaUrl) &&
+            mediaUrl.length <= 2048;
 
           if (
             !mongoose.isValidObjectId(receiverId) ||
-            (!hasText && !isValidImage) ||
+            (!hasText && !isValidImage && !isValidMediaUrl) ||
             (typeof text === "string" && text.length > 2000) ||
-            (imageData && !isValidImage)
+            (imageData && !isValidImage) ||
+            (mediaUrl && !isValidMediaUrl)
           ) {
             return socket.emit("chat-error", {
               message: "Send text or an image up to 1.5 MB.",
@@ -152,6 +157,7 @@ export const initalizeSocket = (server) => {
           chat.messages.push({
             text: hasText ? text.trim() : "",
             imageData: isValidImage ? imageData : null,
+            mediaUrl: isValidMediaUrl ? mediaUrl : null,
             senderId,
             receiverId,
           });
@@ -164,6 +170,7 @@ export const initalizeSocket = (server) => {
             _id: message._id,
             text: message.text,
             imageData: message.imageData,
+            mediaUrl: message.mediaUrl,
             senderId,
             createdAt: message.createdAt,
             receiverId,
@@ -174,6 +181,66 @@ export const initalizeSocket = (server) => {
         }
       },
     );
+
+    socket.on("typingStart", async ({ receiverId }) => {
+      if (
+        !mongoose.isValidObjectId(receiverId) ||
+        !(await areAcceptedConnections(senderId, receiverId))
+      ) {
+        return;
+      }
+
+      io.to(getHashedRoomId(senderId, receiverId)).emit("typingStarted", {
+        senderId,
+      });
+    });
+
+    socket.on("typingStop", async ({ receiverId }) => {
+      if (
+        !mongoose.isValidObjectId(receiverId) ||
+        !(await areAcceptedConnections(senderId, receiverId))
+      ) {
+        return;
+      }
+
+      io.to(getHashedRoomId(senderId, receiverId)).emit("typingStopped", {
+        senderId,
+      });
+    });
+
+    socket.on("markMessagesRead", async ({ receiverId }) => {
+      if (
+        !mongoose.isValidObjectId(receiverId) ||
+        !(await areAcceptedConnections(senderId, receiverId))
+      ) {
+        return;
+      }
+
+      const chat = await Chat.findOne({
+        participants: { $all: [senderId, receiverId] },
+      });
+      if (!chat) return;
+
+      const readAt = new Date();
+      const messageIds = chat.messages
+        .filter(
+          (message) =>
+            message.senderId.toString() === receiverId && !message.readAt,
+        )
+        .map((message) => {
+          message.readAt = readAt;
+          return message._id.toString();
+        });
+
+      if (!messageIds.length) return;
+
+      await chat.save();
+      io.to(getHashedRoomId(senderId, receiverId)).emit("messagesRead", {
+        readerId: senderId,
+        messageIds,
+        readAt,
+      });
+    });
 
     socket.on("disconnect", (reason) => {
       // Find the user ID by checking which map entry has this socket.id

@@ -13,6 +13,15 @@ const messageSchema = new mongoose.Schema(
       default: null,
       maxlength: 2100000,
     },
+    mediaUrl: {
+      type: String,
+      default: null,
+      maxlength: 2048,
+    },
+    readAt: {
+      type: Date,
+      default: null,
+    },
     senderId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
