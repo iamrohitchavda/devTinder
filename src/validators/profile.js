@@ -9,7 +9,13 @@ export const validateEditProfile = (data = {}) => {
     "gender",
     "photoUrl",
     "skills",
-    "bio"
+    "bio",
+    "githubUrl",
+    "portfolioUrl",
+    "projects",
+    "collaborationRoles",
+    "availability",
+    "profilePrompts"
   ];
 
   const isEditAllowed = Object.keys(data).every((key) =>
