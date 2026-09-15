@@ -182,6 +182,38 @@ export const initalizeSocket = (server) => {
       },
     );
 
+    socket.on("markMessageDelivered", async ({ messageId, receiverId }) => {
+      if (
+        !mongoose.isValidObjectId(messageId) ||
+        !mongoose.isValidObjectId(receiverId) ||
+        !(await areAcceptedConnections(senderId, receiverId))
+      ) {
+        return;
+      }
+
+      const chat = await Chat.findOne({
+        participants: { $all: [senderId, receiverId] },
+      });
+      const message = chat?.messages.id(messageId);
+
+      // Only the intended recipient can confirm delivery of a message.
+      if (
+        !message ||
+        message.receiverId.toString() !== senderId ||
+        message.senderId.toString() !== receiverId ||
+        message.deliveredAt
+      ) {
+        return;
+      }
+
+      message.deliveredAt = new Date();
+      await chat.save();
+      io.to(getHashedRoomId(senderId, receiverId)).emit("messageDelivered", {
+        messageId,
+        deliveredAt: message.deliveredAt,
+      });
+    });
+
     socket.on("typingStart", async ({ receiverId }) => {
       if (
         !mongoose.isValidObjectId(receiverId) ||

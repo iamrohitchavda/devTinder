@@ -22,6 +22,10 @@ const messageSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+    deliveredAt: {
+      type: Date,
+      default: null,
+    },
     senderId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
