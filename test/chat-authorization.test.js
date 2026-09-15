@@ -10,13 +10,6 @@ const { isUserAlreadyFriendForChat } = await import(
   "../src/validators/chat.js"
 );
 
-const response = () => {
-  const res = {};
-  res.status = vi.fn().mockReturnValue(res);
-  res.json = vi.fn().mockReturnValue(res);
-  return res;
-};
-
 describe("chat authorization", () => {
   beforeEach(() => vi.clearAllMocks());
 
@@ -26,7 +19,7 @@ describe("chat authorization", () => {
 
     await isUserAlreadyFriendForChat(
       { user: { _id: "507f1f77bcf86cd799439011" }, params: { receiverId: "507f191e810c19729de860ea" } },
-      response(),
+      {},
       next,
     );
 
@@ -35,17 +28,16 @@ describe("chat authorization", () => {
 
   it("blocks users who are not accepted connections", async () => {
     findOne.mockResolvedValue(null);
-    const res = response();
+    const next = vi.fn();
 
     await isUserAlreadyFriendForChat(
       { user: { _id: "507f1f77bcf86cd799439011" }, params: { receiverId: "507f191e810c19729de860ea" } },
-      res,
-      vi.fn(),
+      {},
+      next,
     );
 
-    expect(res.status).toHaveBeenCalledWith(403);
-    expect(res.json).toHaveBeenCalledWith(
-      expect.objectContaining({ success: false }),
+    expect(next).toHaveBeenCalledWith(
+      expect.objectContaining({ statusCode: 403, isOperational: true }),
     );
   });
 });

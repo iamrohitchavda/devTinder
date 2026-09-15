@@ -1,7 +1,6 @@
 import bcrypt from "bcrypt";
 import User from "../models/user.js";
-import { signUpValidator, loginValidator } from "../validators/auth.js";
-import { failure, success } from "../utils/appError.js";
+import { AppError, success } from "../utils/appError.js";
 
 const tokenCookieOptions = {
   httpOnly: true,
@@ -17,11 +16,6 @@ const tokenClearCookieOptions = {
 };
 
 export const signUp = async (req, res) => {
-  try {
-    signUpValidator(req.body);
-  } catch (error) {
-    return failure(res, 400, error.message);
-  }
   const {
     firstName,
     lastName,
@@ -54,18 +48,12 @@ export const signUp = async (req, res) => {
   return success(res, 201, "User signed up successfully", saveUser);
 };
 
-export const login = async (req, res) => {
+export const login = async (req, res, next) => {
   const { email, password } = req.body;
-
-  try {
-    loginValidator(req.body);
-  } catch (error) {
-    return failure(res, 400, error.message);
-  }
 
   const user = await User.findOne({ email }).select("+password");
   if (!user || !(await user.comparePassword(password))) {
-    return failure(res, 401, "Invalid email or password");
+    return next(new AppError("Invalid email or password", 401));
   }
 
   const token = await user.getJWT();

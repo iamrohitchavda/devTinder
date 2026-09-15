@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { signUpValidator } from "../src/validators/auth.js";
+import {
+  validateEmail,
+  validatePassword,
+  validateSignUpName,
+} from "../src/validators/auth.js";
 
 const validUser = {
   firstName: "Rohit",
@@ -10,12 +14,16 @@ const validUser = {
 
 describe("signup validation", () => {
   it("accepts a valid user", () => {
-    expect(() => signUpValidator(validUser)).not.toThrow();
+    const req = { body: validUser };
+
+    expect(validateSignUpName(req)).toBeNull();
+    expect(validateEmail(req)).toBeNull();
+    expect(validatePassword(req)).toBeNull();
   });
 
   it("rejects a weak password", () => {
-    expect(() => signUpValidator({ ...validUser, password: "password" })).toThrow(
-      "Password must be at least 8 characters",
-    );
+    expect(
+      validatePassword({ body: { ...validUser, password: "password" } }),
+    ).toContain("Password must be at least 8 characters");
   });
 });

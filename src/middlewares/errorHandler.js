@@ -3,27 +3,27 @@ const errorHandler = (error, req, res, next) => {
     return next(error);
   }
 
-  let statusCode = 500;
-  let message = "Internal server error";
+  let statusCode = error.statusCode || 500;
+  let message = error.isOperational ? error.message : "Internal server error";
 
-  if (error.name === "ValidationError") {
+  if (!error.isOperational && error.name === "ValidationError") {
     statusCode = 400;
     message = Object.values(error.errors)
       .map((item) => item.message)
       .join(", ");
   }
 
-  if (error.name === "CastError") {
+  if (!error.isOperational && error.name === "CastError") {
     statusCode = 400;
     message = "Invalid resource ID";
   }
 
-  if (error.code === 11000) {
+  if (!error.isOperational && error.code === 11000) {
     statusCode = 409;
     message = "A record with this value already exists";
   }
 
-  if (error.type === "entity.parse.failed") {
+  if (!error.isOperational && error.type === "entity.parse.failed") {
     statusCode = 400;
     message = "Invalid JSON request body";
   }

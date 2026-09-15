@@ -7,6 +7,7 @@ import cors from "cors";
 import http from "http";
 import { initalizeSocket } from "./utils/socket.js";
 import errorHandler from "./middlewares/errorHandler.js";
+import { AppError } from "./utils/appError.js";
 
 import "./utils/cronJob.js";
 
@@ -17,13 +18,15 @@ console.log(`starting in ${process.env.NODE_ENV} mode`);
 app.use(
   cors({
     origin: "http://localhost:5173",
-    credentials: true,
-  }),
+    credentials: true
+  })
 );
 app.use(express.json());
 app.use(cookieParser());
 
 setupAPI(app);
+
+app.use((req, res, next) => next(new AppError("Route not found", 404)));
 
 app.use(errorHandler);
 

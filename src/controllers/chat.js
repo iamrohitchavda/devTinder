@@ -2,7 +2,7 @@ import Chat from "../models/chat.js";
 import mongoose from "mongoose";
 import User from "../models/user.js";
 import { PUBLIC_USER_FIELDS } from "../constants/user.js";
-import { failure, success } from "../utils/appError.js";
+import { AppError, success } from "../utils/appError.js";
 import { emitMessageUnsent } from "../utils/socket.js";
 
 export const getChats = async (req, res) => {
@@ -64,19 +64,19 @@ export const clearChatForCurrentUser = async (req, res) => {
   return success(res, 200, "Chat deleted for you");
 };
 
-export const unsendMessage = async (req, res) => {
+export const unsendMessage = async (req, res, next) => {
   const { receiverId, messageId } = req.params;
   const senderId = req.user._id;
 
   if (!mongoose.isValidObjectId(messageId)) {
-    return failure(res, 400, "Invalid message ID");
+    return next(new AppError("Invalid message ID", 400));
   }
 
   const chat = await Chat.findOne({ participants: { $all: [senderId, receiverId] } });
 
   const message = chat?.messages.id(messageId);
   if (!message || message.senderId.toString() !== senderId.toString()) {
-    return failure(res, 404, "Message not found");
+    return next(new AppError("Message not found", 404));
   }
 
   message.deleteOne();

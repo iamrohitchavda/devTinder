@@ -1,12 +1,12 @@
 import mongoose from "mongoose";
 import ConnectionRequest from "../models/connectionRequest.js";
-import { failure } from "../utils/appError.js";
+import { AppError } from "../utils/appError.js";
 
 export const isUserAlreadyFriendForChat = async (req, res, next) => {
   const { receiverId } = req.params;
 
   if (!receiverId || !mongoose.isValidObjectId(receiverId)) {
-    return failure(res, 400, "Invalid receiver ID");
+    return next(new AppError("Invalid receiver ID", 400));
   }
 
   try {
@@ -18,7 +18,7 @@ export const isUserAlreadyFriendForChat = async (req, res, next) => {
     });
 
     if (!isFriend) {
-      return failure(res, 403, "You are not friends with this user.");
+      return next(new AppError("You are not friends with this user.", 403));
     }
 
     next();

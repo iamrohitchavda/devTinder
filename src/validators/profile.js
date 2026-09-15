@@ -1,7 +1,8 @@
 import User from "../models/user.js";
 import validator from "validator";
 import { PASSWORD_MESSAGE, PASSWORD_OPTIONS } from "../constants/auth.js";
-export const validateEditProfile = (data = {}) => {
+export const validateEditProfile = (req) => {
+  const data = req.body || {};
   const allowedFields = [
     "firstName",
     "lastName",
@@ -22,32 +23,25 @@ export const validateEditProfile = (data = {}) => {
     allowedFields.includes(key)
   );
 
-  return isEditAllowed;
+  return isEditAllowed ? null : "Invalid fields in profile update";
 };
 
-export const validatePasswordUpdate = async (
-  existingPassword,
-  newPassword,
-  user
-) => {
+export const validatePasswordUpdate = async (req) => {
+  const { existingPassword, newPassword } = req.body || {};
+  const user = req.user;
   if (
     !existingPassword ||
     (existingPassword && typeof existingPassword !== "string") ||
     existingPassword.trim() === ""
   ) {
-    throw new Error("Existing password is required");
+    return "Existing password is required";
   }
   if (!newPassword) {
-    throw new Error("New password is required");
-  }
-  if (!existingPassword && !newPassword) {
-    throw new Error("Both existing and new passwords are required");
+    return "New password is required";
   }
 
   if (existingPassword === newPassword) {
-    throw new Error(
-      "New password must be different from the existing password"
-    );
+    return "New password must be different from the existing password";
   }
 
   const loggedInUser = await User.findOne({ email: user.email }).select(
@@ -59,12 +53,12 @@ export const validatePasswordUpdate = async (
   );
 
   if (!isExisistingPasswordValid) {
-    throw new Error("Existing password is incorrect");
+    return "Existing password is incorrect";
   }
 
   if (!validator.isStrongPassword(newPassword, PASSWORD_OPTIONS)) {
-    throw new Error(PASSWORD_MESSAGE);
+    return PASSWORD_MESSAGE;
   }
 
-  return true;
+  return null;
 };

@@ -1,36 +1,54 @@
 import validator from "validator";
 import { PASSWORD_MESSAGE, PASSWORD_OPTIONS } from "../constants/auth.js";
-export const signUpValidator = (data = {}) => {
-  const { email, firstName, lastName, password, age } = data;
+export const validateSignUpName = (req) => {
+  const { firstName, lastName } = req.body || {};
 
   if (!firstName || !lastName) {
-    throw new Error("First name and Last name are required");
-  } else if (firstName.length > 30 || lastName.length > 30) {
-    throw new Error(
-      "First name and Last name should be less than 30 characters"
-    );
+    return "First name and last name are required";
   }
+  if (firstName.length > 30 || lastName.length > 30) {
+    return "First name and last name should be less than 30 characters";
+  }
+
+  return null;
+};
+
+export const validateSignUpAge = (req) => {
+  const { age } = req.body || {};
 
   if (age && typeof age !== "number") {
-    throw new Error("Age is required and must be a number");
+    return "Age must be a number";
   }
 
-  if (!email || (email && !validator.isEmail(email))) {
-    throw new Error("Invalid email address");
-  }
-
-  if (!validator.isStrongPassword(password, PASSWORD_OPTIONS)) {
-    throw new Error(PASSWORD_MESSAGE);
-  }
+  return null;
 };
-export const loginValidator = (data) => {
-  const { email, password } = data;
 
-  if (!validator.isEmail(email)) {
-    throw new Error("Invalid email address");
+export const validateEmail = (req) => {
+  const { email } = req.body || {};
+
+  if (!email || !validator.isEmail(email)) {
+    return "Invalid email address";
   }
 
-  if (!password) {
-    throw new Error("Password is required");
+  return null;
+};
+
+export const validatePassword = (req) => {
+  const { password } = req.body || {};
+
+  if (!validator.isStrongPassword(password || "", PASSWORD_OPTIONS)) {
+    return PASSWORD_MESSAGE;
   }
+
+  return null;
+};
+
+export const validateLoginPassword = (req) => {
+  const { password } = req.body || {};
+
+  if (!password || typeof password !== "string") {
+    return "Password is required";
+  }
+
+  return null;
 };

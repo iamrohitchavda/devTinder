@@ -1,23 +1,23 @@
 import ConnectionRequest from "../models/connectionRequest.js";
 import User from "../models/user.js";
 import { sendEmail } from "../utils/sendEmail.js";
-import { failure, success } from "../utils/appError.js";
+import { AppError, success } from "../utils/appError.js";
 import { PUBLIC_USER_FIELDS } from "../constants/user.js";
 import { emitMatchCreated } from "../utils/socket.js";
 
-export const swipeDeveloper = async (req, res) => {
+export const swipeDeveloper = async (req, res, next) => {
     const fromUserId = req.user._id;
     const toUserId = req.params.targetUserId;
     const status = req.params.action;
 
     const allowStatuses = ["interested", "ignored"];
     if (!allowStatuses.includes(status)) {
-      return failure(res, 400, "Invalid swipe action");
+      return next(new AppError("Invalid swipe action", 400));
     }
 
     const toUser = await User.findById(toUserId);
     if (!toUser) {
-      return failure(res, 404, "User not found");
+      return next(new AppError("User not found", 404));
     }
 
     const existingRequest = await ConnectionRequest.findOne({
@@ -28,7 +28,7 @@ export const swipeDeveloper = async (req, res) => {
     });
 
     if (existingRequest?.fromUserId.toString() === fromUserId.toString()) {
-      return failure(res, 409, "You have already swiped on this developer");
+      return next(new AppError("You have already swiped on this developer", 409));
     }
 
     if (existingRequest?.status === "interested") {
@@ -61,7 +61,7 @@ export const swipeDeveloper = async (req, res) => {
     }
 
     if (existingRequest) {
-      return failure(res, 409, "You have already swiped on this developer");
+      return next(new AppError("You have already swiped on this developer", 409));
     }
 
     const connectionRequest = new ConnectionRequest({
